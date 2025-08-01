@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: Copyright The arm-generic-timer Contributors.
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[package]
+name = "arm-generic-timer"
+version = "0.1.0"
+authors = [
+    "Balint Dobszay <balint.dobszay@arm.com>",
+    "Imre Kis <imre.kis@arm.com>",
+]
+description = "Arm Generic Timer driver"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://git.trustedfirmware.org/rust-spmc/arm-generic-timer.git"
+keywords = ["arm", "timer", "counter", "driver"]
+categories = ["hardware-support", "embedded", "no-std", "no-std::no-alloc"]
+readme = "README.md"
+rust-version = "1.82"
+
+[dependencies]
+bitflags = "2.9"
+safe-mmio = "0.2"
+zerocopy = "0.8"
