@@ -6,7 +6,7 @@
 #![deny(clippy::undocumented_unsafe_blocks)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use core::time::Duration;
+use core::{hint::spin_loop, time::Duration};
 
 use bitflags::bitflags;
 use safe_mmio::{
@@ -14,6 +14,50 @@ use safe_mmio::{
     fields::{ReadPure, ReadPureWrite},
 };
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
+
+/// Interface for accessing common timer registers.
+pub trait TimerInterface {
+    /// Enables timer
+    fn enable(&mut self);
+
+    /// Returns the frequency in Hz.
+    fn frequency(&self) -> u32;
+
+    /// Returns the down-counter value.
+    fn timer_value(&self) -> u32;
+}
+
+/// Generic timer object allowing blocking wait and interrupt enablement.
+pub struct Timer<T: TimerInterface> {
+    timer: T,
+}
+
+impl<T: TimerInterface> Timer<T> {
+    /// Creates new instance.
+    pub fn new(timer: T) -> Self {
+        Self { timer }
+    }
+
+    /// Enables timer.
+    pub fn enable(&mut self) {
+        self.timer.enable();
+    }
+
+    /// Blocking waits for a duration or maximal possible timer. The timer must be enabled before
+    /// calling wait.
+    pub fn wait(&self, duration: Duration) {
+        let ticks =
+            u128::from(self.timer.frequency()).saturating_mul(duration.as_micros()) / 1_000_000;
+        let increment = u32::try_from(ticks).unwrap_or(u32::MAX);
+
+        let start = self.timer.timer_value();
+
+        // The timer is a down-counter
+        while start.wrapping_sub(self.timer.timer_value()) < increment {
+            spin_loop();
+        }
+    }
+}
 
 /// Counter Control Register
 #[repr(transparent)]
@@ -425,60 +469,25 @@ impl<'a> GenericTimerCtl<'a> {
     }
 }
 
-/// Driver for the physical or virtual timer instance of the CNTBase block.
-pub struct Timer<'a> {
+/// `TimerInterface` implementation of the MMIO based physical or virtual timer instance of the
+/// CNTBase block.
+pub struct MmioTimer<'a> {
     regs: UniqueMmioPointer<'a, TimerRegs>,
     frequency: u32,
 }
 
-impl<'a> Timer<'a> {
-    /// Creates new instance.
-    pub fn new(regs: UniqueMmioPointer<'a, TimerRegs>, frequency: u32) -> Self {
-        Self { regs, frequency }
+impl<'a> TimerInterface for MmioTimer<'a> {
+    fn enable(&mut self) {
+        let control = field_shared!(self.regs, ctl).read();
+        field!(self.regs, ctl).write(control | TimerControl::ENABLE);
     }
 
-    /// Sets up timer to generate an interrupt after the given duration.
-    ///
-    /// # Safety
-    ///
-    /// The system must be prepared to take an interrupt. The vector table has to be set and the
-    /// interrupt controller must be configured properly.
-    pub unsafe fn generate_interrupt_after(&mut self, duration: Duration) {
-        self.set_deadline(duration);
-        self.set_control(TimerControl::ENABLE);
+    fn timer_value(&self) -> u32 {
+        field_shared!(self.regs, tval).read()
     }
 
-    /// Disables the timer and masks the interrupt.
-    pub fn cancel_interrupt(&mut self) {
-        self.set_control(TimerControl::IMASK);
-    }
-
-    /// Blocking waits for a duration.
-    pub fn wait(&mut self, duration: Duration) {
-        self.set_deadline(duration);
-        self.set_control(TimerControl::ENABLE | TimerControl::IMASK);
-
-        while !self.control().contains(TimerControl::ISTATUS) {
-            core::hint::spin_loop();
-        }
-    }
-
-    /// Sets the compare register to trigger after the given duration.
-    fn set_deadline(&mut self, duration: Duration) {
-        let increment = self.frequency as u64 * duration.as_micros() as u64 / 1_000_000;
-
-        let value = field!(self.regs, cval).read();
-        field!(self.regs, cval).write(value + increment);
-    }
-
-    /// Reads CTL register.
-    fn control(&self) -> TimerControl {
-        field_shared!(self.regs, ctl).read()
-    }
-
-    /// Sets CTL register.
-    fn set_control(&mut self, control: TimerControl) {
-        field!(self.regs, ctl).write(control)
+    fn frequency(&self) -> u32 {
+        self.frequency
     }
 }
 
@@ -524,15 +533,21 @@ impl<'a> GenericTimerCnt<'a> {
     }
 
     /// Gets physical timer.
-    pub fn physical_timer(&mut self) -> Timer<'_> {
+    pub fn physical_timer(&mut self) -> Timer<MmioTimer<'_>> {
         let frequency = self.frequency();
-        Timer::new(field!(self.regs, cntp), frequency)
+        Timer::new(MmioTimer {
+            regs: field!(self.regs, cntp),
+            frequency,
+        })
     }
 
     /// Gets virtual timer.
-    pub fn virtual_timer(&mut self) -> Timer<'_> {
+    pub fn virtual_timer(&mut self) -> Timer<MmioTimer<'_>> {
         let frequency = self.frequency();
-        Timer::new(field!(self.regs, cntv), frequency)
+        Timer::new(MmioTimer {
+            regs: field!(self.regs, cntv),
+            frequency,
+        })
     }
 }
 
@@ -563,21 +578,28 @@ impl<'a> GenericTimerCntEl0<'a> {
     }
 
     /// Gets physical timer.
-    pub fn physical_timer(&mut self) -> Timer<'_> {
+    pub fn physical_timer(&mut self) -> Timer<MmioTimer<'_>> {
         let frequency = self.frequency();
-        Timer::new(field!(self.regs, cntp), frequency)
+        Timer::new(MmioTimer {
+            regs: field!(self.regs, cntp),
+            frequency,
+        })
     }
 
     /// Gets virtual timer.
-    pub fn virtual_timer(&mut self) -> Timer<'_> {
+    pub fn virtual_timer(&mut self) -> Timer<MmioTimer<'_>> {
         let frequency = self.frequency();
-        Timer::new(field!(self.regs, cntv), frequency)
+        Timer::new(MmioTimer {
+            regs: field!(self.regs, cntv),
+            frequency,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::cell::Cell;
 
     #[test]
     fn sizes() {
@@ -586,5 +608,62 @@ mod tests {
         assert_eq!(0x1000, core::mem::size_of::<CntCtlBase>());
         assert_eq!(0x1000, core::mem::size_of::<CntBase>());
         assert_eq!(0x1000, core::mem::size_of::<CntEl0Base>());
+    }
+
+    struct MockTimer<'a> {
+        frequency: u32,
+        timer_values: &'a [u32],
+        value_index: Cell<usize>,
+    }
+
+    impl<'a> MockTimer<'a> {
+        pub fn new(frequency: u32, timer_values: &'a [u32]) -> Self {
+            Self {
+                frequency,
+                timer_values,
+                value_index: Cell::new(0),
+            }
+        }
+    }
+
+    impl<'a> Drop for MockTimer<'a> {
+        fn drop(&mut self) {
+            assert!(
+                self.timer_values.len() == self.value_index.get(),
+                "Not all timer values have been used: {:?}",
+                &self.timer_values[self.value_index.get()..]
+            );
+        }
+    }
+
+    impl<'a> TimerInterface for MockTimer<'a> {
+        fn enable(&mut self) {}
+
+        fn frequency(&self) -> u32 {
+            self.frequency
+        }
+
+        fn timer_value(&self) -> u32 {
+            let index = self.value_index.get();
+            self.value_index.update(|i| i + 1);
+
+            self.timer_values[index]
+        }
+    }
+
+    #[test]
+    fn wait() {
+        let mock = MockTimer::new(1000, &[7000, 5000, 3000, 2000]);
+
+        let timer = Timer::new(mock);
+        timer.wait(Duration::from_secs(5));
+    }
+
+    #[test]
+    fn wait_overflow() {
+        let mock = MockTimer::new(1000, &[2000, 1000, 2001]);
+
+        let timer = Timer::new(mock);
+        timer.wait(Duration::from_secs(u64::MAX));
     }
 }
