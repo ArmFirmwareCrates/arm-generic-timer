@@ -1,9 +1,10 @@
 # Arm Generic Timer driver
 
-Driver implementation for the memory mapped Generic Timer peripheral of the Arm A-profile
-architecture. The implementation is based on the following sections of the
-[Arm Architecture Reference Manual for A-profile architecture](https://developer.arm.com/documentation/ddi0487/la/).
+Driver implementation for the memory mapped and system register based Generic Timer peripheral of
+the Arm A-profile architecture. The implementation is based on the following sections of the
+[Arm Architecture Reference Manual for A-profile architecture](https://developer.arm.com/documentation/ddi0487/maa/).
 
+* D24.10 Generic Timer registers
 * I2.2.3 Counter module control and status register summary
 * I2.3 Memory-mapped timer components
 * I5.6 Generic Timer memory-mapped registers overview
@@ -11,13 +12,28 @@ architecture. The implementation is based on the following sections of the
 
 ## Implemented features
 
-* Register descriptions and drivers for the following frames:
-  * `CNTControlBase`
-  * `CNTCTLBase`
-  * `CNTReadBase`
-  * `CNTBaseN`
-  * `CNTEL0BaseN`
-* Blocking and interrupt based timer wait functions.
+* Memory mapped generic timer
+  * Register descriptions and drivers for the following frames:
+    * `CNTControlBase`
+    * `CNTCTLBase`
+    * `CNTReadBase`
+    * `CNTBaseN`
+    * `CNTEL0BaseN`
+* System register based generic timer
+  * Physical Secure Timer
+  * Hypervisor Physical Timer
+  * Secure EL2 Physical Timer
+  * EL2 Virtual Timer
+  * Secure EL2 Virtual Timer
+  * Physical Timer
+  * Virtual Timer
+* Generic delay timer logic
+
+## Feature flags
+
+- `el1`: Enables system register based timers which relies on EL1 system registers.
+- `el2`: Enables system register based timers which relies on EL2 system registers.
+- `fakes`: Accesses fake system registers rather than the real ones, for running tests on the host.
 
 ## License
 
