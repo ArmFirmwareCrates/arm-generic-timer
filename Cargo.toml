@@ -20,6 +20,7 @@ rust-version = "1.85"
 [dependencies]
 arm-sysregs = "0.2.6"
 bitflags = "2.11.0"
+embedded-hal = { version = "1.0.0", optional = true }
 safe-mmio = "0.3.0"
 zerocopy = "0.8"
 
@@ -27,11 +28,12 @@ zerocopy = "0.8"
 arm-sysregs = { version = "0.2.6", features = ["fakes"] }
 
 [features]
+default = ["embedded-hal"]
 el1 = ["arm-sysregs/el1"]
 el2 = ["el1", "arm-sysregs/el2"]
 fakes = ["arm-sysregs/fakes"]
 
 [package.metadata.docs.rs]
 default-target = "aarch64-unknown-none"
-features = ["el1", "el2"]
+features = ["el1", "el2", "embedded-hal"]
 rustdoc-args = ["--cfg", "docsrs"]

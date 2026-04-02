@@ -6,6 +6,8 @@
 #![deny(clippy::undocumented_unsafe_blocks)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+#[cfg(feature = "embedded-hal")]
+mod embedded_hal;
 /// Memory mapped timer driver implementations.
 ///
 /// See I5.6 Generic Timer memory-mapped registers overview.
