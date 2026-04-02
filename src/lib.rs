@@ -10,9 +10,8 @@ use core::time::Duration;
 
 use bitflags::bitflags;
 use safe_mmio::{
-    field, field_shared,
+    UniqueMmioPointer, field, field_shared,
     fields::{ReadPure, ReadPureWrite},
-    UniqueMmioPointer,
 };
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
