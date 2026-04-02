@@ -5,6 +5,7 @@
 #![doc = include_str!("../README.md")]
 #![deny(clippy::undocumented_unsafe_blocks)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 #[cfg(feature = "embedded-hal")]
 mod embedded_hal;
