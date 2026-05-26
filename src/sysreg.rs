@@ -5,7 +5,7 @@
 //!
 //! See D24.10 Generic Timer registers.
 
-use crate::TimerInterface;
+use crate::{CounterInterface, TimerInterface};
 #[cfg(feature = "el2")]
 use arm_sysregs::{
     CnthpCtlEl2, CnthpsCtlEl2, CnthvCtlEl2, CnthvsCtlEl2, read_cnthp_ctl_el2, read_cnthp_tval_el2,
@@ -15,7 +15,8 @@ use arm_sysregs::{
 };
 use arm_sysregs::{
     CntpCtlEl0, CntvCtlEl0, read_cntfrq_el0, read_cntp_ctl_el0, read_cntp_tval_el0,
-    read_cntv_ctl_el0, read_cntv_tval_el0, write_cntp_ctl_el0, write_cntv_ctl_el0,
+    read_cntpct_el0, read_cntv_ctl_el0, read_cntv_tval_el0, read_cntvct_el0, write_cntp_ctl_el0,
+    write_cntv_ctl_el0,
 };
 #[cfg(feature = "el1")]
 use arm_sysregs::{CntpsCtlEl1, read_cntps_ctl_el1, read_cntps_tval_el1, write_cntps_ctl_el1};
@@ -167,5 +168,31 @@ impl TimerInterface for VirtualTimer {
 
     fn timer_value(&self) -> u32 {
         read_cntv_tval_el0().timervalue()
+    }
+}
+
+/// Physical Counter.
+pub struct PhysicalCounter;
+
+impl CounterInterface for PhysicalCounter {
+    fn counter_value(&self) -> u64 {
+        read_cntpct_el0().physicalcount()
+    }
+
+    fn frequency(&self) -> u32 {
+        read_cntfrq_el0().clockfreq()
+    }
+}
+
+/// Virtual Counter.
+pub struct VirtualCounter;
+
+impl CounterInterface for VirtualCounter {
+    fn counter_value(&self) -> u64 {
+        read_cntvct_el0().virtualcount()
+    }
+
+    fn frequency(&self) -> u32 {
+        read_cntfrq_el0().clockfreq()
     }
 }

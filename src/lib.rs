@@ -9,6 +9,8 @@
 
 #[cfg(feature = "embedded-hal")]
 mod embedded_hal;
+#[cfg(feature = "embedded-hal-timer")]
+mod embedded_hal_timer;
 pub mod memory_mapped;
 #[cfg(any(test, feature = "fakes", target_arch = "aarch64"))]
 pub mod sysreg;
@@ -56,6 +58,43 @@ impl<T: TimerInterface> Timer<T> {
         while start.wrapping_sub(self.timer.timer_value()) < increment {
             spin_loop();
         }
+    }
+}
+
+/// Interface for accessing common counter registers.
+pub trait CounterInterface {
+    /// Returns the up-counter value.
+    fn counter_value(&self) -> u64;
+
+    /// Returns the counter frequency in Hz.
+    fn frequency(&self) -> u32;
+}
+
+/// An up-counter keeping track of elapsed time.
+pub struct Counter<C: CounterInterface> {
+    counter: C,
+    offset: u64,
+}
+
+impl<C: CounterInterface> Counter<C> {
+    /// Creates a new instance.
+    pub fn new(counter: C) -> Self {
+        Self { counter, offset: 0 }
+    }
+
+    /// Returns the counter value in ticks.
+    fn counter_value(&self) -> u64 {
+        self.counter.counter_value() - self.offset
+    }
+
+    /// Returns the counter value.
+    pub fn elapsed_time(&self) -> Duration {
+        let nanoseconds =
+            u128::from(self.counter_value()) * 1000_000_000 / u128::from(self.counter.frequency());
+        let seconds = (nanoseconds / 1_000_000_000).try_into().unwrap();
+        // Can't overflow as the result must always be less than 1_000_000_000, which fits in a u32.
+        let subsecond_nanoseconds = (nanoseconds % 1_000_000_000) as u32;
+        Duration::new(seconds, subsecond_nanoseconds)
     }
 }
 

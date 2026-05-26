@@ -5,10 +5,10 @@
 //!
 //! See I5.6 Generic Timer memory-mapped registers overview.
 
-use crate::{Timer, TimerInterface};
+use crate::{CounterInterface, Timer, TimerInterface};
 use bitflags::bitflags;
 use safe_mmio::{
-    UniqueMmioPointer, field, field_shared,
+    SharedMmioPointer, UniqueMmioPointer, field, field_shared,
     fields::{ReadPure, ReadPureWrite},
 };
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
@@ -445,6 +445,22 @@ impl<'a> TimerInterface for MmioTimer<'a> {
     }
 }
 
+/// `CounterInterface` implementation for an MMIO physical or virtual timer instance.
+pub struct MmioCounter<'a> {
+    counter: SharedMmioPointer<'a, ReadPure<u64>>,
+    frequency: u32,
+}
+
+impl CounterInterface for MmioCounter<'_> {
+    fn counter_value(&self) -> u64 {
+        self.counter.read()
+    }
+
+    fn frequency(&self) -> u32 {
+        self.frequency
+    }
+}
+
 /// Driver for the CNTBase timer block.
 pub struct GenericTimerCnt<'a> {
     regs: UniqueMmioPointer<'a, CntBase>,
@@ -503,6 +519,24 @@ impl<'a> GenericTimerCnt<'a> {
             frequency,
         })
     }
+
+    /// Gets the physical counter.
+    pub fn physical_counter(&self) -> MmioCounter<'_> {
+        let frequency = self.frequency();
+        MmioCounter {
+            counter: field_shared!(self.regs, cntpct),
+            frequency,
+        }
+    }
+
+    /// Gets the virtual counter.
+    pub fn virtual_counter(&self) -> MmioCounter<'_> {
+        let frequency = self.frequency();
+        MmioCounter {
+            counter: field_shared!(self.regs, cntvct),
+            frequency,
+        }
+    }
 }
 
 /// Driver for the CNTEL0Base timer block.
@@ -547,6 +581,24 @@ impl<'a> GenericTimerCntEl0<'a> {
             regs: field!(self.regs, cntv),
             frequency,
         })
+    }
+
+    /// Gets the physical counter.
+    pub fn physical_counter(&self) -> MmioCounter<'_> {
+        let frequency = self.frequency();
+        MmioCounter {
+            counter: field_shared!(self.regs, cntpct),
+            frequency,
+        }
+    }
+
+    /// Gets the virtual counter.
+    pub fn virtual_counter(&self) -> MmioCounter<'_> {
+        let frequency = self.frequency();
+        MmioCounter {
+            counter: field_shared!(self.regs, cntvct),
+            frequency,
+        }
     }
 }
 
