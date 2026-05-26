@@ -9,13 +9,7 @@
 
 #[cfg(feature = "embedded-hal")]
 mod embedded_hal;
-/// Memory mapped timer driver implementations.
-///
-/// See I5.6 Generic Timer memory-mapped registers overview.
 pub mod memory_mapped;
-/// System register based timer driver implementations.
-///
-/// See D24.10 Generic Timer registers.
 #[cfg(any(test, feature = "fakes", target_arch = "aarch64"))]
 pub mod sysreg;
 

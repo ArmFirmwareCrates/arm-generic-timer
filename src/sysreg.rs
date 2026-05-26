@@ -1,6 +1,10 @@
 // SPDX-FileCopyrightText: Copyright The arm-generic-timer Contributors.
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+//! System register based timer driver implementations.
+//!
+//! See D24.10 Generic Timer registers.
+
 use crate::TimerInterface;
 #[cfg(feature = "el2")]
 use arm_sysregs::{

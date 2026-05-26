@@ -1,6 +1,10 @@
 // SPDX-FileCopyrightText: Copyright The arm-generic-timer Contributors.
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+//! Memory mapped timer driver implementations.
+//!
+//! See I5.6 Generic Timer memory-mapped registers overview.
+
 use crate::{Timer, TimerInterface};
 use bitflags::bitflags;
 use safe_mmio::{
