@@ -28,13 +28,13 @@ impl<T: CounterInterface> embedded_hal_timer::Timer for Counter<T> {
     fn elapsed_nanos(&self) -> Result<u64, OverflowError> {
         // TODO: Can we avoid overflow in the first multiplication without using u128 or losing
         // precision?
-        (u128::from(self.elapsed_ticks()?) * 1000_000_000 / u128::from(self.tickrate()))
+        (u128::from(self.elapsed_ticks()?) * 1_000_000_000 / u128::from(self.tickrate()))
             .try_into()
             .map_err(|_| OverflowError)
     }
 
     fn elapsed_micros(&self) -> Result<u64, OverflowError> {
-        (u128::from(self.elapsed_ticks()?) * 1000_000 / u128::from(self.tickrate()))
+        (u128::from(self.elapsed_ticks()?) * 1_000_000 / u128::from(self.tickrate()))
             .try_into()
             .map_err(|_| OverflowError)
     }
@@ -54,13 +54,13 @@ impl<T: CounterInterface> embedded_hal_timer::Timer for Counter<T> {
     }
 
     fn max_nanos(&self) -> u64 {
-        (u128::from(self.max_ticks()) * 1000_000_000 / u128::from(self.tickrate()))
+        (u128::from(self.max_ticks()) * 1_000_000_000 / u128::from(self.tickrate()))
             .try_into()
             .unwrap_or(u64::MAX)
     }
 
     fn max_micros(&self) -> u64 {
-        (u128::from(self.max_ticks()) * 1000_000 / u128::from(self.tickrate()))
+        (u128::from(self.max_ticks()) * 1_000_000 / u128::from(self.tickrate()))
             .try_into()
             .unwrap_or(u64::MAX)
     }

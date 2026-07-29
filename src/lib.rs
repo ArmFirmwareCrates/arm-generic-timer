@@ -90,7 +90,7 @@ impl<C: CounterInterface> Counter<C> {
     /// Returns the counter value.
     pub fn elapsed_time(&self) -> Duration {
         let nanoseconds =
-            u128::from(self.counter_value()) * 1000_000_000 / u128::from(self.counter.frequency());
+            u128::from(self.counter_value()) * 1_000_000_000 / u128::from(self.counter.frequency());
         let seconds = (nanoseconds / 1_000_000_000).try_into().unwrap();
         // Can't overflow as the result must always be less than 1_000_000_000, which fits in a u32.
         let subsecond_nanoseconds = (nanoseconds % 1_000_000_000) as u32;
