@@ -6,20 +6,27 @@
 //! See D24.10 Generic Timer registers.
 
 use crate::{CounterInterface, TimerInterface};
-#[cfg(feature = "el2")]
-use arm_sysregs::{
-    CnthpCtlEl2, CnthpsCtlEl2, CnthvCtlEl2, CnthvsCtlEl2, read_cnthp_ctl_el2, read_cnthp_tval_el2,
-    read_cnthps_ctl_el2, read_cnthps_tval_el2, read_cnthv_ctl_el2, read_cnthv_tval_el2,
-    read_cnthvs_ctl_el2, read_cnthvs_tval_el2, write_cnthp_ctl_el2, write_cnthps_ctl_el2,
-    write_cnthv_ctl_el2, write_cnthvs_ctl_el2,
-};
-use arm_sysregs::{
-    CntpCtlEl0, CntvCtlEl0, read_cntfrq_el0, read_cntp_ctl_el0, read_cntp_tval_el0,
-    read_cntpct_el0, read_cntv_ctl_el0, read_cntv_tval_el0, read_cntvct_el0, write_cntp_ctl_el0,
-    write_cntv_ctl_el0,
+use arm_sysregs::el0::{
+    accessors::{
+        read_cntfrq_el0, read_cntp_ctl_el0, read_cntp_tval_el0, read_cntpct_el0, read_cntv_ctl_el0,
+        read_cntv_tval_el0, read_cntvct_el0, write_cntp_ctl_el0, write_cntv_ctl_el0,
+    },
+    registers::{CntpCtlEl0, CntvCtlEl0},
 };
 #[cfg(feature = "el1")]
-use arm_sysregs::{CntpsCtlEl1, read_cntps_ctl_el1, read_cntps_tval_el1, write_cntps_ctl_el1};
+use arm_sysregs::el1::{
+    accessors::{read_cntps_ctl_el1, read_cntps_tval_el1, write_cntps_ctl_el1},
+    registers::CntpsCtlEl1,
+};
+#[cfg(feature = "el2")]
+use arm_sysregs::el2::{
+    accessors::{
+        read_cnthp_ctl_el2, read_cnthp_tval_el2, read_cnthps_ctl_el2, read_cnthps_tval_el2,
+        read_cnthv_ctl_el2, read_cnthv_tval_el2, read_cnthvs_ctl_el2, read_cnthvs_tval_el2,
+        write_cnthp_ctl_el2, write_cnthps_ctl_el2, write_cnthv_ctl_el2, write_cnthvs_ctl_el2,
+    },
+    registers::{CnthpCtlEl2, CnthpsCtlEl2, CnthvCtlEl2, CnthvsCtlEl2},
+};
 
 /// Physical Secure Timer
 ///
