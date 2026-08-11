@@ -4,6 +4,8 @@
 
 ### Breaking changes
 
+- Added `compare_value`, `set_compare_value`, `enable_interrupt` and
+  `set_timer_value` to `TimerInterface`.
 - Changed the return type of `TimerInterface::timer_value` to signed.
 - System register based timers must now be constructed with their unsafe `new`
   functions, whose safety contracts require exclusive access to the
@@ -11,6 +13,7 @@
 
 ### Improvements
 
+- Added `set_remaining_time` to `Timer<T>`.
 - Added `remaining_time` to `Timer<T>`, to enable querying TVAL.
 - Added a `Counter` abstraction and an implementation of the
   `embedded-hal-timer` `Timer` trait.

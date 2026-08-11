@@ -8,24 +8,35 @@
 use crate::{CounterInterface, TimerInterface};
 use arm_sysregs::el0::{
     accessors::{
-        read_cntfrq_el0, read_cntp_ctl_el0, read_cntp_tval_el0, read_cntpct_el0, read_cntv_ctl_el0,
-        read_cntv_tval_el0, read_cntvct_el0, write_cntp_ctl_el0, write_cntv_ctl_el0,
+        read_cntfrq_el0, read_cntp_ctl_el0, read_cntp_cval_el0, read_cntp_tval_el0,
+        read_cntpct_el0, read_cntv_ctl_el0, read_cntv_cval_el0, read_cntv_tval_el0,
+        read_cntvct_el0, write_cntp_ctl_el0, write_cntp_cval_el0, write_cntp_tval_el0,
+        write_cntv_ctl_el0, write_cntv_cval_el0, write_cntv_tval_el0,
     },
-    registers::{CntpCtlEl0, CntvCtlEl0},
+    registers::{CntpCtlEl0, CntpCvalEl0, CntpTvalEl0, CntvCtlEl0, CntvCvalEl0, CntvTvalEl0},
 };
 #[cfg(feature = "el1")]
 use arm_sysregs::el1::{
-    accessors::{read_cntps_ctl_el1, read_cntps_tval_el1, write_cntps_ctl_el1},
-    registers::CntpsCtlEl1,
+    accessors::{
+        read_cntps_ctl_el1, read_cntps_cval_el1, read_cntps_tval_el1, write_cntps_ctl_el1,
+        write_cntps_cval_el1, write_cntps_tval_el1,
+    },
+    registers::{CntpsCtlEl1, CntpsCvalEl1, CntpsTvalEl1},
 };
 #[cfg(feature = "el2")]
 use arm_sysregs::el2::{
     accessors::{
-        read_cnthp_ctl_el2, read_cnthp_tval_el2, read_cnthps_ctl_el2, read_cnthps_tval_el2,
-        read_cnthv_ctl_el2, read_cnthv_tval_el2, read_cnthvs_ctl_el2, read_cnthvs_tval_el2,
-        write_cnthp_ctl_el2, write_cnthps_ctl_el2, write_cnthv_ctl_el2, write_cnthvs_ctl_el2,
+        read_cnthp_ctl_el2, read_cnthp_cval_el2, read_cnthp_tval_el2, read_cnthps_ctl_el2,
+        read_cnthps_cval_el2, read_cnthps_tval_el2, read_cnthv_ctl_el2, read_cnthv_cval_el2,
+        read_cnthv_tval_el2, read_cnthvs_ctl_el2, read_cnthvs_cval_el2, read_cnthvs_tval_el2,
+        write_cnthp_ctl_el2, write_cnthp_cval_el2, write_cnthp_tval_el2, write_cnthps_ctl_el2,
+        write_cnthps_cval_el2, write_cnthps_tval_el2, write_cnthv_ctl_el2, write_cnthv_cval_el2,
+        write_cnthv_tval_el2, write_cnthvs_ctl_el2, write_cnthvs_cval_el2, write_cnthvs_tval_el2,
     },
-    registers::{CnthpCtlEl2, CnthpsCtlEl2, CnthvCtlEl2, CnthvsCtlEl2},
+    registers::{
+        CnthpCtlEl2, CnthpCvalEl2, CnthpTvalEl2, CnthpsCtlEl2, CnthpsCvalEl2, CnthpsTvalEl2,
+        CnthvCtlEl2, CnthvCvalEl2, CnthvTvalEl2, CnthvsCtlEl2, CnthvsCvalEl2, CnthvsTvalEl2,
+    },
 };
 
 /// Physical Secure Timer
@@ -60,6 +71,25 @@ impl TimerInterface for PhysicalSecureTimer {
 
     fn timer_value(&self) -> i32 {
         read_cntps_tval_el1().timervalue() as i32
+    }
+
+    fn enable_interrupt(&mut self, enabled: bool) {
+        let mut control = read_cntps_ctl_el1();
+        control.set(CntpsCtlEl1::IMASK, !enabled);
+
+        write_cntps_ctl_el1(control);
+    }
+
+    fn compare_value(&self) -> u64 {
+        read_cntps_cval_el1().comparevalue()
+    }
+
+    fn set_timer_value(&mut self, timer_value: i32) {
+        write_cntps_tval_el1(CntpsTvalEl1::empty().with_timervalue(timer_value as u32));
+    }
+
+    fn set_compare_value(&mut self, compare_value: u64) {
+        write_cntps_cval_el1(CntpsCvalEl1::empty().with_comparevalue(compare_value));
     }
 }
 
@@ -96,6 +126,25 @@ impl TimerInterface for HypervisorPhysicalTimer {
     fn timer_value(&self) -> i32 {
         read_cnthp_tval_el2().timervalue() as i32
     }
+
+    fn enable_interrupt(&mut self, enabled: bool) {
+        let mut control = read_cnthp_ctl_el2();
+        control.set(CnthpCtlEl2::IMASK, !enabled);
+
+        write_cnthp_ctl_el2(control);
+    }
+
+    fn compare_value(&self) -> u64 {
+        read_cnthp_cval_el2().comparevalue()
+    }
+
+    fn set_timer_value(&mut self, timer_value: i32) {
+        write_cnthp_tval_el2(CnthpTvalEl2::empty().with_timervalue(timer_value as u32));
+    }
+
+    fn set_compare_value(&mut self, compare_value: u64) {
+        write_cnthp_cval_el2(CnthpCvalEl2::empty().with_comparevalue(compare_value));
+    }
 }
 
 /// Secure EL2 Physical Timer
@@ -130,6 +179,25 @@ impl TimerInterface for SecureEl2PhysicalTimer {
 
     fn timer_value(&self) -> i32 {
         read_cnthps_tval_el2().timervalue() as i32
+    }
+
+    fn enable_interrupt(&mut self, enabled: bool) {
+        let mut control = read_cnthps_ctl_el2();
+        control.set(CnthpsCtlEl2::IMASK, !enabled);
+
+        write_cnthps_ctl_el2(control);
+    }
+
+    fn compare_value(&self) -> u64 {
+        read_cnthps_cval_el2().comparevalue()
+    }
+
+    fn set_timer_value(&mut self, timer_value: i32) {
+        write_cnthps_tval_el2(CnthpsTvalEl2::empty().with_timervalue(timer_value as u32));
+    }
+
+    fn set_compare_value(&mut self, compare_value: u64) {
+        write_cnthps_cval_el2(CnthpsCvalEl2::empty().with_comparevalue(compare_value));
     }
 }
 
@@ -166,6 +234,25 @@ impl TimerInterface for El2VirtualTimer {
     fn timer_value(&self) -> i32 {
         read_cnthv_tval_el2().timervalue() as i32
     }
+
+    fn enable_interrupt(&mut self, enabled: bool) {
+        let mut control = read_cnthv_ctl_el2();
+        control.set(CnthvCtlEl2::IMASK, !enabled);
+
+        write_cnthv_ctl_el2(control);
+    }
+
+    fn compare_value(&self) -> u64 {
+        read_cnthv_cval_el2().comparevalue()
+    }
+
+    fn set_timer_value(&mut self, timer_value: i32) {
+        write_cnthv_tval_el2(CnthvTvalEl2::empty().with_timervalue(timer_value as u32));
+    }
+
+    fn set_compare_value(&mut self, compare_value: u64) {
+        write_cnthv_cval_el2(CnthvCvalEl2::empty().with_comparevalue(compare_value));
+    }
 }
 
 /// Secure EL2 Virtual Timer
@@ -201,6 +288,25 @@ impl TimerInterface for SecureEl2VirtualTimer {
     fn timer_value(&self) -> i32 {
         read_cnthvs_tval_el2().timervalue() as i32
     }
+
+    fn enable_interrupt(&mut self, enabled: bool) {
+        let mut control = read_cnthvs_ctl_el2();
+        control.set(CnthvsCtlEl2::IMASK, !enabled);
+
+        write_cnthvs_ctl_el2(control);
+    }
+
+    fn compare_value(&self) -> u64 {
+        read_cnthvs_cval_el2().comparevalue()
+    }
+
+    fn set_timer_value(&mut self, timer_value: i32) {
+        write_cnthvs_tval_el2(CnthvsTvalEl2::empty().with_timervalue(timer_value as u32));
+    }
+
+    fn set_compare_value(&mut self, compare_value: u64) {
+        write_cnthvs_cval_el2(CnthvsCvalEl2::empty().with_comparevalue(compare_value));
+    }
 }
 
 /// Physical Timer
@@ -233,6 +339,25 @@ impl TimerInterface for PhysicalTimer {
     fn timer_value(&self) -> i32 {
         read_cntp_tval_el0().timervalue() as i32
     }
+
+    fn enable_interrupt(&mut self, enabled: bool) {
+        let mut control = read_cntp_ctl_el0();
+        control.set(CntpCtlEl0::IMASK, !enabled);
+
+        write_cntp_ctl_el0(control);
+    }
+
+    fn compare_value(&self) -> u64 {
+        read_cntp_cval_el0().comparevalue()
+    }
+
+    fn set_timer_value(&mut self, timer_value: i32) {
+        write_cntp_tval_el0(CntpTvalEl0::empty().with_timervalue(timer_value as u32));
+    }
+
+    fn set_compare_value(&mut self, compare_value: u64) {
+        write_cntp_cval_el0(CntpCvalEl0::empty().with_comparevalue(compare_value));
+    }
 }
 
 /// Virtual Timer
@@ -264,6 +389,25 @@ impl TimerInterface for VirtualTimer {
 
     fn timer_value(&self) -> i32 {
         read_cntv_tval_el0().timervalue() as i32
+    }
+
+    fn enable_interrupt(&mut self, enabled: bool) {
+        let mut control = read_cntv_ctl_el0();
+        control.set(CntvCtlEl0::IMASK, !enabled);
+
+        write_cntv_ctl_el0(control);
+    }
+
+    fn compare_value(&self) -> u64 {
+        read_cntv_cval_el0().comparevalue()
+    }
+
+    fn set_timer_value(&mut self, timer_value: i32) {
+        write_cntv_tval_el0(CntvTvalEl0::empty().with_timervalue(timer_value as u32));
+    }
+
+    fn set_compare_value(&mut self, compare_value: u64) {
+        write_cntv_cval_el0(CntvCvalEl0::empty().with_comparevalue(compare_value));
     }
 }
 

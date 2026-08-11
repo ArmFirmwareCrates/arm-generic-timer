@@ -443,6 +443,25 @@ impl<'a> TimerInterface for MmioTimer<'a> {
     fn frequency(&self) -> u32 {
         self.frequency
     }
+
+    fn enable_interrupt(&mut self, enabled: bool) {
+        let mut control = field_shared!(self.regs, ctl).read();
+        control.set(TimerControl::IMASK, !enabled);
+
+        field!(self.regs, ctl).write(control);
+    }
+
+    fn compare_value(&self) -> u64 {
+        field_shared!(self.regs, cval).read()
+    }
+
+    fn set_timer_value(&mut self, timer_value: i32) {
+        field!(self.regs, tval).write(timer_value);
+    }
+
+    fn set_compare_value(&mut self, compare_value: u64) {
+        field!(self.regs, cval).write(compare_value);
+    }
 }
 
 /// `CounterInterface` implementation for an MMIO physical or virtual timer instance.

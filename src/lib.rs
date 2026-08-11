@@ -28,6 +28,21 @@ pub trait TimerInterface {
 
     /// Returns the down-counter value.
     fn timer_value(&self) -> i32;
+
+    /// Returns the compare value.
+    fn compare_value(&self) -> u64;
+
+    /// Sets timer value. This programs the compare value relative to the physical counter, which
+    /// affects the value returned by [`TimerInterface::compare_value()`].
+    /// Setting a negative value will trigger an interrupt, if enabled.
+    fn set_timer_value(&mut self, timer_value: i32);
+
+    /// Sets the compare value. This also affects the down-counter value queried using
+    /// [`TimerInterface::timer_value()`].
+    fn set_compare_value(&mut self, compare_value: u64);
+
+    /// Unmasks / masks interrupts for the counter.
+    fn enable_interrupt(&mut self, enabled: bool);
 }
 
 /// Generic timer object allowing blocking wait and interrupt enablement.
@@ -66,6 +81,27 @@ impl<T: TimerInterface> Timer<T> {
             u64::try_from(self.timer.timer_value()).unwrap_or(0),
             self.timer.frequency(),
         )
+    }
+
+    /// Sets the remaining timer duration.
+    ///
+    /// If the duration converted to ticks overflows `i32`, TVAL will be set to `i32::MAX` ticks.
+    pub fn set_remaining_time(&mut self, duration: Duration) {
+        let ticks = i32::try_from(util::duration_to_ticks(duration, self.timer.frequency()))
+            .unwrap_or(i32::MAX);
+
+        self.timer.set_timer_value(ticks);
+    }
+
+    /// Unmasks interrupts for this timer.
+    /// Interrupts and output signals will only be emitted if [`Self::enable()`] has been called.
+    pub fn enable_interrupt(&mut self) {
+        self.timer.enable_interrupt(true);
+    }
+
+    /// Masks interrupts for this timer.
+    pub fn disable_interrupt(&mut self) {
+        self.timer.enable_interrupt(false);
     }
 }
 
@@ -106,10 +142,15 @@ mod tests {
     use super::*;
     use core::cell::Cell;
 
+    /// Mock timer for use in unit tests.
+    ///
+    /// Queries of `timer_value` are based on `counter_values` and `compare_value`. On every query,
+    /// the next available `counter_value` is used, until the list is exhausted.
     struct MockTimer<'a> {
         enabled: bool,
         frequency: u32,
-        timer_values: &'a [i32],
+        counter_values: &'a [u64],
+        compare_value: u64,
         value_index: Cell<usize>,
     }
 
@@ -118,22 +159,34 @@ mod tests {
         /// enabled.
         pub const UNKNOWN_TVAL: i32 = 0x1234_BCDE;
 
-        pub fn new(frequency: u32, timer_values: &'a [i32]) -> Self {
+        /// Creates a new mock timer. `counter_values` are the mock values for physical counts.
+        pub fn new(frequency: u32, counter_values: &'a [u64], compare_value: u64) -> Self {
             Self {
                 enabled: false,
                 frequency,
-                timer_values,
+                counter_values,
+                compare_value,
                 value_index: Cell::new(0),
             }
+        }
+
+        fn next_counter_value(&self) -> u64 {
+            let index = self.value_index.get();
+            self.value_index.update(|i| i + 1);
+
+            *self
+                .counter_values
+                .get(index)
+                .expect("Mock counter query out of bounds")
         }
     }
 
     impl<'a> Drop for MockTimer<'a> {
         fn drop(&mut self) {
             assert!(
-                self.timer_values.len() <= self.value_index.get(),
+                self.counter_values.len() <= self.value_index.get(),
                 "Not all timer values have been used: {:?}",
-                &self.timer_values[self.value_index.get()..]
+                &self.counter_values[self.value_index.get()..]
             );
         }
     }
@@ -152,16 +205,38 @@ mod tests {
                 return Self::UNKNOWN_TVAL;
             }
 
-            let index = self.value_index.get();
-            self.value_index.update(|i| i + 1);
+            let cval = self.compare_value;
+            let physical_count = self.next_counter_value();
 
-            self.timer_values[index]
+            // intentionally truncated to 32 bits:
+            // TimerValue is the low 32 bits of `ZeroExtend{64}((CVAL - PhysicalCountInt)[31:0])`
+            cval.wrapping_sub(physical_count) as i32
+        }
+
+        fn compare_value(&self) -> u64 {
+            self.compare_value
+        }
+
+        fn set_timer_value(&mut self, timer_value: i32) {
+            self.compare_value = self
+                .counter_values
+                .get(self.value_index.get())
+                .unwrap()
+                .wrapping_add(timer_value as u64);
+        }
+
+        fn set_compare_value(&mut self, compare_value: u64) {
+            self.compare_value = compare_value
+        }
+
+        fn enable_interrupt(&mut self, _enabled: bool) {
+            unimplemented!()
         }
     }
 
     #[test]
     fn wait() {
-        let mock = MockTimer::new(1000, &[7000, 5000, 3000, 2000]);
+        let mock = MockTimer::new(1000, &[0, 2000, 4000, 5000], 0);
 
         let mut timer = Timer::new(mock);
         timer.enable();
@@ -171,7 +246,7 @@ mod tests {
 
     #[test]
     fn wait_overflow() {
-        let mock = MockTimer::new(1000, &[2000, 1000, 2001]);
+        let mock = MockTimer::new(1000, &[1, 1000, 0], 0);
 
         let mut timer = Timer::new(mock);
         timer.enable();
@@ -179,8 +254,30 @@ mod tests {
     }
 
     #[test]
+    fn set_remaining_time() {
+        let mock = MockTimer::new(1000, &[5000], 0);
+        let mut timer = Timer::new(mock);
+        timer.enable();
+
+        timer.set_remaining_time(Duration::from_secs(2));
+        assert_eq!(timer.timer.compare_value(), 7000);
+
+        assert_eq!(timer.remaining_time(), Duration::from_secs(2));
+    }
+
+    #[test]
+    fn remaining_time_cval() {
+        let mock = MockTimer::new(1000, &[1000, 2000], 3000);
+        let mut timer = Timer::new(mock);
+        timer.enable();
+
+        assert_eq!(timer.remaining_time(), Duration::from_secs(2));
+        assert_eq!(timer.remaining_time(), Duration::from_secs(1));
+    }
+
+    #[test]
     fn disabled_timer() {
-        let mock = MockTimer::new(1, &[]);
+        let mock = MockTimer::new(1, &[], 0);
         let timer = Timer::new(mock);
 
         assert_eq!(
@@ -191,7 +288,15 @@ mod tests {
 
     #[test]
     fn remaining_time() {
-        let mock = MockTimer::new(1, &[i32::MAX, 1000, 0, i32::MIN, -1]);
+        let compare_value = u32::MAX as u64;
+        let counter_values = [
+            compare_value - i32::MAX.unsigned_abs() as u64,
+            compare_value - 1000,
+            compare_value,
+            compare_value + i32::MIN.unsigned_abs() as u64,
+            compare_value + 1,
+        ];
+        let mock = MockTimer::new(1, &counter_values, compare_value);
         let mut timer = Timer::new(mock);
         timer.enable();
 
@@ -213,7 +318,8 @@ mod tests {
 
     #[test]
     fn wait_negative() {
-        let mock = MockTimer::new(1, &[0, i32::MIN]);
+        let counter_values = [0, i32::MIN.unsigned_abs() as u64];
+        let mock = MockTimer::new(1, &counter_values, 0);
         let mut timer = Timer::new(mock);
         timer.enable();
 
@@ -226,7 +332,7 @@ mod tests {
 
     #[test]
     fn wait_around_zero() {
-        let mock = MockTimer::new(1, &[1, 0, -1, -2]);
+        let mock = MockTimer::new(1, &[0, 1, 2, 3], 1);
         let mut timer = Timer::new(mock);
         timer.enable();
 
@@ -235,7 +341,13 @@ mod tests {
 
     #[test]
     fn wait_extremities() {
-        let mock = MockTimer::new(1, &[i32::MAX, 0, i32::MIN]);
+        let compare_value = i32::MAX as u64;
+        let counter_values = [
+            0,
+            compare_value,
+            compare_value + i32::MIN.unsigned_abs() as u64,
+        ];
+        let mock = MockTimer::new(1, &counter_values, compare_value);
         let mut timer = Timer::new(mock);
         timer.enable();
 
