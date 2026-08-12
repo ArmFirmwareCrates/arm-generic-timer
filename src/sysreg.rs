@@ -32,7 +32,20 @@ use arm_sysregs::el2::{
 ///
 /// Uses `CNTPS_*` system registers.
 #[cfg(feature = "el1")]
-pub struct PhysicalSecureTimer;
+pub struct PhysicalSecureTimer(());
+
+#[cfg(feature = "el1")]
+impl PhysicalSecureTimer {
+    /// Creates an instance of the Physical Secure Timer.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that no other instance exists and that there is
+    /// no concurrent access to the CNTPS_* system registers.
+    pub const unsafe fn new() -> Self {
+        Self(())
+    }
+}
 
 #[cfg(feature = "el1")]
 impl TimerInterface for PhysicalSecureTimer {
@@ -54,7 +67,20 @@ impl TimerInterface for PhysicalSecureTimer {
 ///
 /// Uses `CNTHP_*` system registers.
 #[cfg(feature = "el2")]
-pub struct HypervisorPhysicalTimer;
+pub struct HypervisorPhysicalTimer(());
+
+#[cfg(feature = "el2")]
+impl HypervisorPhysicalTimer {
+    /// Creates an instance of the Hypervisor Physical Timer.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that no other instance exists and that there is
+    /// no concurrent access to the CNTHP_* system registers.
+    pub const unsafe fn new() -> Self {
+        Self(())
+    }
+}
 
 #[cfg(feature = "el2")]
 impl TimerInterface for HypervisorPhysicalTimer {
@@ -76,7 +102,20 @@ impl TimerInterface for HypervisorPhysicalTimer {
 ///
 /// Uses `CNTHPS_*` system registers.
 #[cfg(feature = "el2")]
-pub struct SecureEl2PhysicalTimer;
+pub struct SecureEl2PhysicalTimer(());
+
+#[cfg(feature = "el2")]
+impl SecureEl2PhysicalTimer {
+    /// Creates an instance of the Secure EL2 Physical Timer.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that no other instance exists and that there is
+    /// no concurrent access to the CNTHPS_* system registers.
+    pub const unsafe fn new() -> Self {
+        Self(())
+    }
+}
 
 #[cfg(feature = "el2")]
 impl TimerInterface for SecureEl2PhysicalTimer {
@@ -98,7 +137,20 @@ impl TimerInterface for SecureEl2PhysicalTimer {
 ///
 /// Uses `CNTHV_*` system registers
 #[cfg(feature = "el2")]
-pub struct El2VirtualTimer;
+pub struct El2VirtualTimer(());
+
+#[cfg(feature = "el2")]
+impl El2VirtualTimer {
+    /// Creates an instance of the EL2 Virtual Timer.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that no other instance exists and that there is
+    /// no concurrent access to the CNTHV_* system registers.
+    pub const unsafe fn new() -> Self {
+        Self(())
+    }
+}
 
 #[cfg(feature = "el2")]
 impl TimerInterface for El2VirtualTimer {
@@ -120,7 +172,20 @@ impl TimerInterface for El2VirtualTimer {
 ///
 /// Uses `CNTHVS_*` system registers
 #[cfg(feature = "el2")]
-pub struct SecureEl2VirtualTimer;
+pub struct SecureEl2VirtualTimer(());
+
+#[cfg(feature = "el2")]
+impl SecureEl2VirtualTimer {
+    /// Creates an instance of the Secure EL2 Virtual Timer.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that no other instance exists and that there is
+    /// no concurrent access to the CNTHVS_* system registers.
+    pub const unsafe fn new() -> Self {
+        Self(())
+    }
+}
 
 #[cfg(feature = "el2")]
 impl TimerInterface for SecureEl2VirtualTimer {
@@ -141,7 +206,19 @@ impl TimerInterface for SecureEl2VirtualTimer {
 /// Physical Timer
 ///
 /// Uses `CNTP_*` system registers.
-pub struct PhysicalTimer;
+pub struct PhysicalTimer(());
+
+impl PhysicalTimer {
+    /// Creates an instance of the Physical Timer.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that no other instance exists and that there is
+    /// no concurrent access to the CNTP_* system registers.
+    pub const unsafe fn new() -> Self {
+        Self(())
+    }
+}
 
 impl TimerInterface for PhysicalTimer {
     fn enable(&mut self) {
@@ -161,7 +238,19 @@ impl TimerInterface for PhysicalTimer {
 /// Virtual Timer
 ///
 /// Uses `CNTV_*` system registers.
-pub struct VirtualTimer;
+pub struct VirtualTimer(());
+
+impl VirtualTimer {
+    /// Creates an instance of the Virtual Timer.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that no other instance exists and that there is
+    /// no concurrent access to the CNTV_* system registers.
+    pub const unsafe fn new() -> Self {
+        Self(())
+    }
+}
 
 impl TimerInterface for VirtualTimer {
     fn enable(&mut self) {

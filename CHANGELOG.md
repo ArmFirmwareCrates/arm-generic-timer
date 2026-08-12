@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- System register based timers must now be constructed with their unsafe `new`
+  functions, whose safety contracts require exclusive access to the
+  corresponding system registers.
+
 ### Improvements
 
 - Added a `Counter` abstraction and an implementation of the
