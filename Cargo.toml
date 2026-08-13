@@ -3,11 +3,7 @@
 
 [package]
 name = "arm-generic-timer"
-version = "0.2.1"
-authors = [
-    "Balint Dobszay <balint.dobszay@arm.com>",
-    "Imre Kis <imre.kis@arm.com>",
-]
+version = "0.3.0"
 description = "Arm Generic Timer driver"
 edition = "2024"
 license = "MIT OR Apache-2.0"
@@ -15,14 +11,14 @@ repository = "https://git.trustedfirmware.org/arm-firmware-crates/arm-generic-ti
 keywords = ["arm", "timer", "counter", "driver"]
 categories = ["hardware-support", "embedded", "no-std", "no-std::no-alloc"]
 readme = "README.md"
-rust-version = "1.85"
+rust-version = "1.88"
 
 [dependencies]
 arm-sysregs = "0.4.0"
-bitflags = "2.11.0"
+bitflags = "2.13.1"
 embedded-hal = { version = "1.0.0", optional = true }
 embedded-hal-timer = { version = "0.2.0", optional = true }
-safe-mmio = "0.3.0"
+safe-mmio = "0.3.1"
 zerocopy = "0.8"
 
 [dev-dependencies]
