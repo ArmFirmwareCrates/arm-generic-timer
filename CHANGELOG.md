@@ -10,6 +10,7 @@
 
 ### Improvements
 
+- Added `remaining_time` to `Timer<T>`, to enable querying TVAL.
 - Added a `Counter` abstraction and an implementation of the
   `embedded-hal-timer` `Timer` trait.
 

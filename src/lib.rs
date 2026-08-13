@@ -14,6 +14,7 @@ mod embedded_hal_timer;
 pub mod memory_mapped;
 #[cfg(any(test, feature = "fakes", target_arch = "aarch64"))]
 pub mod sysreg;
+mod util;
 
 use core::{hint::spin_loop, time::Duration};
 
@@ -48,8 +49,7 @@ impl<T: TimerInterface> Timer<T> {
     /// Blocking waits for a duration or maximal possible timer. The timer must be enabled before
     /// calling wait.
     pub fn wait(&self, duration: Duration) {
-        let ticks =
-            u128::from(self.timer.frequency()).saturating_mul(duration.as_micros()) / 1_000_000;
+        let ticks = util::duration_to_ticks(duration, self.timer.frequency());
         let increment = u32::try_from(ticks).unwrap_or(u32::MAX);
 
         let start = self.timer.timer_value();
@@ -58,6 +58,11 @@ impl<T: TimerInterface> Timer<T> {
         while start.wrapping_sub(self.timer.timer_value()) < increment {
             spin_loop();
         }
+    }
+
+    /// Returns the downcounter value as a duration.
+    pub fn remaining_time(&self) -> Duration {
+        util::ticks_to_duration(u64::from(self.timer.timer_value()), self.timer.frequency())
     }
 }
 
@@ -89,12 +94,7 @@ impl<C: CounterInterface> Counter<C> {
 
     /// Returns the counter value.
     pub fn elapsed_time(&self) -> Duration {
-        let nanoseconds =
-            u128::from(self.counter_value()) * 1_000_000_000 / u128::from(self.counter.frequency());
-        let seconds = (nanoseconds / 1_000_000_000).try_into().unwrap();
-        // Can't overflow as the result must always be less than 1_000_000_000, which fits in a u32.
-        let subsecond_nanoseconds = (nanoseconds % 1_000_000_000) as u32;
-        Duration::new(seconds, subsecond_nanoseconds)
+        util::ticks_to_duration(self.counter_value(), self.counter.frequency())
     }
 }
 
@@ -104,14 +104,20 @@ mod tests {
     use core::cell::Cell;
 
     struct MockTimer<'a> {
+        enabled: bool,
         frequency: u32,
         timer_values: &'a [u32],
         value_index: Cell<usize>,
     }
 
     impl<'a> MockTimer<'a> {
+        /// Value representing an arbitrary `u32` returned by querying `TVAL` when the timer is not
+        /// enabled.
+        pub const UNKNOWN_TVAL: u32 = 0x1234_BCDE;
+
         pub fn new(frequency: u32, timer_values: &'a [u32]) -> Self {
             Self {
+                enabled: false,
                 frequency,
                 timer_values,
                 value_index: Cell::new(0),
@@ -130,13 +136,19 @@ mod tests {
     }
 
     impl<'a> TimerInterface for MockTimer<'a> {
-        fn enable(&mut self) {}
+        fn enable(&mut self) {
+            self.enabled = true;
+        }
 
         fn frequency(&self) -> u32 {
             self.frequency
         }
 
         fn timer_value(&self) -> u32 {
+            if !self.enabled {
+                return Self::UNKNOWN_TVAL;
+            }
+
             let index = self.value_index.get();
             self.value_index.update(|i| i + 1);
 
@@ -148,7 +160,9 @@ mod tests {
     fn wait() {
         let mock = MockTimer::new(1000, &[7000, 5000, 3000, 2000]);
 
-        let timer = Timer::new(mock);
+        let mut timer = Timer::new(mock);
+        timer.enable();
+
         timer.wait(Duration::from_secs(5));
     }
 
@@ -156,7 +170,19 @@ mod tests {
     fn wait_overflow() {
         let mock = MockTimer::new(1000, &[2000, 1000, 2001]);
 
-        let timer = Timer::new(mock);
+        let mut timer = Timer::new(mock);
+        timer.enable();
         timer.wait(Duration::from_secs(u64::MAX));
+    }
+
+    #[test]
+    fn disabled_timer() {
+        let mock = MockTimer::new(1, &[]);
+        let timer = Timer::new(mock);
+
+        assert_eq!(
+            timer.remaining_time(),
+            Duration::from_secs(MockTimer::UNKNOWN_TVAL as u64)
+        );
     }
 }
