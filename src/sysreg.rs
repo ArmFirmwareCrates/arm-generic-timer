@@ -58,8 +58,8 @@ impl TimerInterface for PhysicalSecureTimer {
         read_cntfrq_el0().clockfreq()
     }
 
-    fn timer_value(&self) -> u32 {
-        read_cntps_tval_el1().timervalue()
+    fn timer_value(&self) -> i32 {
+        read_cntps_tval_el1().timervalue() as i32
     }
 }
 
@@ -93,8 +93,8 @@ impl TimerInterface for HypervisorPhysicalTimer {
         read_cntfrq_el0().clockfreq()
     }
 
-    fn timer_value(&self) -> u32 {
-        read_cnthp_tval_el2().timervalue()
+    fn timer_value(&self) -> i32 {
+        read_cnthp_tval_el2().timervalue() as i32
     }
 }
 
@@ -128,8 +128,8 @@ impl TimerInterface for SecureEl2PhysicalTimer {
         read_cntfrq_el0().clockfreq()
     }
 
-    fn timer_value(&self) -> u32 {
-        read_cnthps_tval_el2().timervalue()
+    fn timer_value(&self) -> i32 {
+        read_cnthps_tval_el2().timervalue() as i32
     }
 }
 
@@ -163,8 +163,8 @@ impl TimerInterface for El2VirtualTimer {
         read_cntfrq_el0().clockfreq()
     }
 
-    fn timer_value(&self) -> u32 {
-        read_cnthv_tval_el2().timervalue()
+    fn timer_value(&self) -> i32 {
+        read_cnthv_tval_el2().timervalue() as i32
     }
 }
 
@@ -198,8 +198,8 @@ impl TimerInterface for SecureEl2VirtualTimer {
         read_cntfrq_el0().clockfreq()
     }
 
-    fn timer_value(&self) -> u32 {
-        read_cnthvs_tval_el2().timervalue()
+    fn timer_value(&self) -> i32 {
+        read_cnthvs_tval_el2().timervalue() as i32
     }
 }
 
@@ -230,8 +230,8 @@ impl TimerInterface for PhysicalTimer {
         read_cntfrq_el0().clockfreq()
     }
 
-    fn timer_value(&self) -> u32 {
-        read_cntp_tval_el0().timervalue()
+    fn timer_value(&self) -> i32 {
+        read_cntp_tval_el0().timervalue() as i32
     }
 }
 
@@ -262,8 +262,8 @@ impl TimerInterface for VirtualTimer {
         read_cntfrq_el0().clockfreq()
     }
 
-    fn timer_value(&self) -> u32 {
-        read_cntv_tval_el0().timervalue()
+    fn timer_value(&self) -> i32 {
+        read_cntv_tval_el0().timervalue() as i32
     }
 }
 

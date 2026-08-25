@@ -209,7 +209,7 @@ pub struct TimerRegs {
     /// 0x000 Counter-timer Timer CompareValue
     cval: ReadPureWrite<u64>,
     /// 0x008 Counter-timer Timer TimerValue
-    tval: ReadPureWrite<u32>,
+    tval: ReadPureWrite<i32>,
     /// 0x00c Counter-timer Timer Control
     ctl: ReadPureWrite<TimerControl>,
 }
@@ -436,7 +436,7 @@ impl<'a> TimerInterface for MmioTimer<'a> {
         field!(self.regs, ctl).write(control | TimerControl::ENABLE);
     }
 
-    fn timer_value(&self) -> u32 {
+    fn timer_value(&self) -> i32 {
         field_shared!(self.regs, tval).read()
     }
 

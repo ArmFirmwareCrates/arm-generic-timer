@@ -4,6 +4,7 @@
 
 ### Breaking changes
 
+- Changed the return type of `TimerInterface::timer_value` to signed.
 - System register based timers must now be constructed with their unsafe `new`
   functions, whose safety contracts require exclusive access to the
   corresponding system registers.

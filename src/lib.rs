@@ -27,7 +27,7 @@ pub trait TimerInterface {
     fn frequency(&self) -> u32;
 
     /// Returns the down-counter value.
-    fn timer_value(&self) -> u32;
+    fn timer_value(&self) -> i32;
 }
 
 /// Generic timer object allowing blocking wait and interrupt enablement.
@@ -55,14 +55,17 @@ impl<T: TimerInterface> Timer<T> {
         let start = self.timer.timer_value();
 
         // The timer is a down-counter
-        while start.wrapping_sub(self.timer.timer_value()) < increment {
+        while (start.wrapping_sub(self.timer.timer_value()) as u32) < increment {
             spin_loop();
         }
     }
 
     /// Returns the downcounter value as a duration.
     pub fn remaining_time(&self) -> Duration {
-        util::ticks_to_duration(u64::from(self.timer.timer_value()), self.timer.frequency())
+        util::ticks_to_duration(
+            u64::try_from(self.timer.timer_value()).unwrap_or(0),
+            self.timer.frequency(),
+        )
     }
 }
 
@@ -106,16 +109,16 @@ mod tests {
     struct MockTimer<'a> {
         enabled: bool,
         frequency: u32,
-        timer_values: &'a [u32],
+        timer_values: &'a [i32],
         value_index: Cell<usize>,
     }
 
     impl<'a> MockTimer<'a> {
-        /// Value representing an arbitrary `u32` returned by querying `TVAL` when the timer is not
+        /// Value representing an arbitrary `i32` returned by querying `TVAL` when the timer is not
         /// enabled.
-        pub const UNKNOWN_TVAL: u32 = 0x1234_BCDE;
+        pub const UNKNOWN_TVAL: i32 = 0x1234_BCDE;
 
-        pub fn new(frequency: u32, timer_values: &'a [u32]) -> Self {
+        pub fn new(frequency: u32, timer_values: &'a [i32]) -> Self {
             Self {
                 enabled: false,
                 frequency,
@@ -128,7 +131,7 @@ mod tests {
     impl<'a> Drop for MockTimer<'a> {
         fn drop(&mut self) {
             assert!(
-                self.timer_values.len() == self.value_index.get(),
+                self.timer_values.len() <= self.value_index.get(),
                 "Not all timer values have been used: {:?}",
                 &self.timer_values[self.value_index.get()..]
             );
@@ -144,7 +147,7 @@ mod tests {
             self.frequency
         }
 
-        fn timer_value(&self) -> u32 {
+        fn timer_value(&self) -> i32 {
             if !self.enabled {
                 return Self::UNKNOWN_TVAL;
             }
@@ -184,5 +187,60 @@ mod tests {
             timer.remaining_time(),
             Duration::from_secs(MockTimer::UNKNOWN_TVAL as u64)
         );
+    }
+
+    #[test]
+    fn remaining_time() {
+        let mock = MockTimer::new(1, &[i32::MAX, 1000, 0, i32::MIN, -1]);
+        let mut timer = Timer::new(mock);
+        timer.enable();
+
+        // TVAL = i32::MAX
+        assert_eq!(timer.remaining_time(), Duration::from_secs(i32::MAX as u64));
+
+        // TVAL = 1000
+        assert_eq!(timer.remaining_time(), Duration::from_secs(1000));
+
+        // TVAL = 0
+        assert_eq!(timer.remaining_time(), Duration::from_secs(0));
+
+        // TVAL = i32::MIN
+        assert_eq!(timer.remaining_time(), Duration::from_secs(0));
+
+        // TVAL = -1
+        assert_eq!(timer.remaining_time(), Duration::from_secs(0));
+    }
+
+    #[test]
+    fn wait_negative() {
+        let mock = MockTimer::new(1, &[0, i32::MIN]);
+        let mut timer = Timer::new(mock);
+        timer.enable();
+
+        // wait() will take the "current" timer value, 0 as the start time
+        // It will then consume i32::MIN from the MockTimer, after i32::MIN seconds.
+        let wait_duration = -(i32::MIN as i64) as u64;
+
+        timer.wait(Duration::from_secs(wait_duration));
+    }
+
+    #[test]
+    fn wait_around_zero() {
+        let mock = MockTimer::new(1, &[1, 0, -1, -2]);
+        let mut timer = Timer::new(mock);
+        timer.enable();
+
+        timer.wait(Duration::from_secs(3));
+    }
+
+    #[test]
+    fn wait_extremities() {
+        let mock = MockTimer::new(1, &[i32::MAX, 0, i32::MIN]);
+        let mut timer = Timer::new(mock);
+        timer.enable();
+
+        let wait_duration = u32::MAX as u64 + 1;
+
+        timer.wait(Duration::from_secs(wait_duration));
     }
 }
