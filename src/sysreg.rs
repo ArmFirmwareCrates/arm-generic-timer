@@ -85,7 +85,7 @@ impl TimerInterface for PhysicalSecureTimer {
     }
 
     fn set_timer_value(&mut self, timer_value: i32) {
-        write_cntps_tval_el1(CntpsTvalEl1::empty().with_timervalue(timer_value as u32));
+        write_cntps_tval_el1(CntpsTvalEl1::empty().with_timervalue(timer_value));
     }
 
     fn set_compare_value(&mut self, compare_value: u64) {
@@ -139,7 +139,7 @@ impl TimerInterface for HypervisorPhysicalTimer {
     }
 
     fn set_timer_value(&mut self, timer_value: i32) {
-        write_cnthp_tval_el2(CnthpTvalEl2::empty().with_timervalue(timer_value as u32));
+        write_cnthp_tval_el2(CnthpTvalEl2::empty().with_timervalue(timer_value));
     }
 
     fn set_compare_value(&mut self, compare_value: u64) {
@@ -193,7 +193,7 @@ impl TimerInterface for SecureEl2PhysicalTimer {
     }
 
     fn set_timer_value(&mut self, timer_value: i32) {
-        write_cnthps_tval_el2(CnthpsTvalEl2::empty().with_timervalue(timer_value as u32));
+        write_cnthps_tval_el2(CnthpsTvalEl2::empty().with_timervalue(timer_value));
     }
 
     fn set_compare_value(&mut self, compare_value: u64) {
@@ -247,7 +247,7 @@ impl TimerInterface for El2VirtualTimer {
     }
 
     fn set_timer_value(&mut self, timer_value: i32) {
-        write_cnthv_tval_el2(CnthvTvalEl2::empty().with_timervalue(timer_value as u32));
+        write_cnthv_tval_el2(CnthvTvalEl2::empty().with_timervalue(timer_value));
     }
 
     fn set_compare_value(&mut self, compare_value: u64) {
@@ -301,7 +301,7 @@ impl TimerInterface for SecureEl2VirtualTimer {
     }
 
     fn set_timer_value(&mut self, timer_value: i32) {
-        write_cnthvs_tval_el2(CnthvsTvalEl2::empty().with_timervalue(timer_value as u32));
+        write_cnthvs_tval_el2(CnthvsTvalEl2::empty().with_timervalue(timer_value));
     }
 
     fn set_compare_value(&mut self, compare_value: u64) {
@@ -352,7 +352,7 @@ impl TimerInterface for PhysicalTimer {
     }
 
     fn set_timer_value(&mut self, timer_value: i32) {
-        write_cntp_tval_el0(CntpTvalEl0::empty().with_timervalue(timer_value as u32));
+        write_cntp_tval_el0(CntpTvalEl0::empty().with_timervalue(timer_value));
     }
 
     fn set_compare_value(&mut self, compare_value: u64) {
@@ -403,7 +403,7 @@ impl TimerInterface for VirtualTimer {
     }
 
     fn set_timer_value(&mut self, timer_value: i32) {
-        write_cntv_tval_el0(CntvTvalEl0::empty().with_timervalue(timer_value as u32));
+        write_cntv_tval_el0(CntvTvalEl0::empty().with_timervalue(timer_value));
     }
 
     fn set_compare_value(&mut self, compare_value: u64) {

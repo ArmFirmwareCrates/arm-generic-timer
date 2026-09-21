@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Other changes
+
+- Updated `arm-sysregs` to 0.5.1.
+
 ## 0.3.0
 
 ### Breaking changes
