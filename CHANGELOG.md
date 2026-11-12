@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+### Breaking changes
+
+- Updated `safe-mmio` to 0.4.0.
+
 ## 0.3.1
 
 ### Other changes
